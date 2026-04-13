@@ -1,6 +1,7 @@
 import argparse
 import time
 import tomllib
+from datetime import datetime
 from pathlib import Path
 
 import google.auth
@@ -69,8 +70,9 @@ def get_project_number(resourcemanager, project_id: str) -> str:
 
 def save_key_to_file(project_id: str, key_string: str, output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{project_id}_gemini_api_key.txt"
-    output_path.write_text(f"{key_string}\n", encoding="utf-8")
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    output_path = output_dir / f"{project_id}_{timestamp}.env"
+    output_path.write_text(f"GEMINI_API_KEY={key_string}\n", encoding="utf-8")
     return output_path
 
 

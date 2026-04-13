@@ -17,6 +17,21 @@ Main script: `01-create_gcloud_project.py`
 - [`uv`](https://docs.astral.sh/uv/)
 - Google Cloud credentials via Application Default Credentials (ADC)
 
+## Local Python Environment
+
+Create and activate the project virtual environment before installing dependencies:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+```
+
+Then install packages with:
+
+```bash
+uv sync
+```
+
 ## Install Dependencies
 
 ```bash
@@ -103,21 +118,18 @@ Run:
 
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json \
-uv run 02-create-gemini-api-key.py --project-id YOUR_PROJECT_ID --display-name gemini-api-key
-```
-
-Example:
-
-```bash
-GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json \
-uv run 02-create-gemini-api-key.py --project-id automated-project-1776063049 --display-name gemini-api-key
+uv run 02-create-gemini-api-key.py --display-name gemini-api-key --project-id YOUR_PROJECT_ID
 ```
 
 Important:
-- The key is saved to `generated_keys/<project-id>_gemini_api_key.txt`.
+- The key is saved to `generated_keys/<project-id>_<timestamp>.env` with `GEMINI_API_KEY=<key>`.
 - Treat key files as secrets and never commit them.
 
 ## Delete Projects from Command Line
+
+```
+gcloud projects list
+```
 
 Delete a project (moves it to `DELETE_REQUESTED` first):
 
