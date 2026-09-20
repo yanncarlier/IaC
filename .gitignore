@@ -430,3 +430,21 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Terraform plan output can contain sensitive infrastructure values
+tfplan
+tfplan.*
+*.tfplan
+*.tfplan.json
+*.plan
+
+# Local credentials and private key material
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local environment and Kubernetes configuration
+.env
+.env.*
+kubeconfig*
