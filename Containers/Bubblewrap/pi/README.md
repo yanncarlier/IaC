@@ -1,6 +1,6 @@
-**Bubblewrap + Landlock + seccomp + namespaces** is the lightest real isolation stack available on Linux. It’s what Flatpak, Claude Code (on Linux), and many AI-agent sandboxes use under the hood.
+**Bubblewrap + namespaces (optionally + seccomp / Landlock)** is the lightest real isolation stack available on Linux. It's what Flatpak, Claude Code (on Linux), and many AI-agent sandboxes use under the hood.
 
-Here’s a clear breakdown of each piece and how they fit together.
+Here's a clear breakdown of each piece and how they fit together.
 
 ### 1. Linux Namespaces (the foundation)
 
@@ -17,16 +17,18 @@ Namespaces give a process its own private view of system resources. The importan
 
 These are pure kernel features — almost zero overhead.
 
-### 2. seccomp-bpf (system-call filter)
+### 2. seccomp-bpf (system-call filter) — optional
 
 - Filters which **syscalls** a process is allowed to make.
 - Runs at the kernel entry point (very early).
 - Can allow, deny with `EPERM`, kill the process, or notify a supervisor.
 - Great for shrinking the kernel attack surface (block `ptrace`, `kexec`, `bpf`, `mount`, `userfaultfd`, etc.).
 
-Limitation: it cannot understand paths (it only sees numbers and register values). So it pairs perfectly with Landlock.
+Limitation: it cannot understand paths (it only sees numbers and register values). So it pairs well with filesystem-level restrictions.
 
-### 3. Landlock (filesystem + limited network LSM)
+> Note: `pi-bwrap` below does **not** load a seccomp filter. bubblewrap can load one via `--seccomp FD` if you want to add it.
+
+### 3. Landlock (filesystem + limited network LSM) — optional
 
 Landlock is a modern **Linux Security Module** designed for unprivileged self-sandboxing.
 
@@ -44,6 +46,8 @@ Typical flow:
 
 It is stackable with SELinux/AppArmor and works inside containers/namespaces.
 
+> Note: bubblewrap itself has no Landlock support, and `pi-bwrap` does not use it. Landlock would have to be applied by a separate helper.
+
 ### 4. bubblewrap (`bwrap`) — the convenient glue
 
 `bwrap` is a small, unprivileged tool that makes the above easy to use from the command line or scripts. It was written by Alexander Larsson (Red Hat) as the backend for Flatpak.
@@ -54,16 +58,21 @@ What it does:
 - Optionally creates user, PID, network, IPC, UTS namespaces.
 - Can load a seccomp filter.
 - Drops capabilities and sets `NO_NEW_PRIVS`.
-- Starts a tiny PID 1 inside the sandbox so child processes are reaped correctly.
+- Runs a tiny init process inside the PID namespace so child processes are reaped correctly.
 
-It does **not** use a daemon and does not require root (when user namespaces are enabled).
+It does **not** use a daemon and does not require root (when unprivileged user namespaces are enabled).
 
 ### Practical Example (minimal AI agent sandbox)
 
+Note: comments cannot follow a trailing `\` in bash, so they go on their own lines here.
+
 ```bash
+# --unshare-all : all namespaces
+# --share-net   : keep network (needed for LLM APIs)
+# --bind "$PWD" : only the current project is writable
 bwrap \
-  --unshare-all \                    # all namespaces
-  --share-net \                      # keep network (needed for LLM APIs)
+  --unshare-all \
+  --share-net \
   --ro-bind /usr /usr \
   --ro-bind /lib /lib \
   --ro-bind /lib64 /lib64 \
@@ -74,7 +83,7 @@ bwrap \
   --proc /proc \
   --tmpfs /tmp \
   --tmpfs /home \
-  --bind "$PWD" "$PWD" \             # only current project is writable
+  --bind "$PWD" "$PWD" \
   --chdir "$PWD" \
   --die-with-parent \
   your-ai-agent "$@"
@@ -94,6 +103,7 @@ You can go further by adding a seccomp filter and Landlock rules on top.
 - Still shares the host kernel (a kernel exploit can escape).
 - You must carefully choose what to bind-mount (missing a library = broken tool).
 - Network isolation is all-or-nothing unless you add a proxy.
+- Anything the sandbox can read can be sent out over the network (see the pi-bwrap notes below).
 - Not as strong as a microVM (Firecracker / libkrun) when the code is truly adversarial.
 
 ### When to use this stack
@@ -105,42 +115,58 @@ You can go further by adding a seccomp filter and Landlock rules on top.
 | Untrusted / multi-tenant / hostile code | Prefer microVM (libkrun, Firecracker) or full KVM |
 | Long-running services                   | Rootless Podman is usually more convenient        |
 
-Many modern AI-agent wrappers (ai-jail, ai-bwrap, Claude Code’s built-in sandbox, safe-agent, etc.) are thin shells around exactly these four primitives.
-
-
-
-
-
 ### pi-bwrap
 
-Here’s a ready-to-use, hardened bubblewrap wrapper tailored specifically for Pi (the Earendil coding agent).
+A ready-to-use bubblewrap wrapper for Pi (the Earendil coding agent).
 
+#### Install
+
+```bash
+chmod +x install-pi-bwrap.sh
+./install-pi-bwrap.sh
 ```
+
+The installer installs `bubblewrap` if missing and copies `pi-bwrap` to `~/.local/bin/`. Make sure `~/.local/bin` is in your `PATH`.
+
+#### Usage
+
+```bash
 cd ~/your-project
 pi-bwrap                  # normal interactive session
 pi-bwrap --model sonnet   # with arguments
 pi-bwrap "fix the tests"  # one-shot
 ```
 
-### What this sandbox does
+#### What this sandbox does
 
-| Access                        | Status           | Reason                               |
-| ----------------------------- | ---------------- | ------------------------------------ |
-| Current project directory     | **Read + Write** | So Pi can edit code                  |
-| ~/.pi                         | **Read + Write** | Auth, settings, extensions, sessions |
-| System binaries (/usr, /bin…) | Read-only        | Needed to run tools                  |
-| Network                       | Allowed          | Required for LLM API calls           |
-| Rest of $HOME                 | **Invisible**    | Protects ~/.ssh, documents, etc.     |
-| Host processes                | Invisible        | PID namespace                        |
-| Capabilities                  | Dropped          | No privilege escalation              |
+| Access                                          | Status                | Reason                                                       |
+| ----------------------------------------------- | --------------------- | ------------------------------------------------------------ |
+| Current project directory                       | **Read + Write**      | So Pi can edit code                                          |
+| ~/.pi                                           | **Read + Write**      | Auth, settings, extensions, sessions                         |
+| System binaries (/usr, /bin…)                   | Read-only             | Needed to run tools                                          |
+| ~/.gitconfig, ~/.config/gh, ~/.npmrc            | Read-only (if exist)  | Git/GitHub/npm usage                                         |
+| ~/.local/bin, ~/.nvm, ~/.cargo, ~/.rustup, etc. | Read-only (if exist)  | Toolchains Pi may need                                       |
+| ~/.ssh                                          | **Hidden by default** | Uncomment the line in the script if needed                   |
+| Rest of $HOME                                   | **Invisible**         | Protects documents, browser profiles, etc.                   |
+| /tmp, /var/tmp, /run                            | Private tmpfs         | Wiped on every run                                           |
+| Network                                         | Allowed               | Required for LLM API calls                                   |
+| Host processes                                  | Invisible             | PID namespace                                                |
+| Capabilities                                    | Dropped               | No privilege escalation                                      |
+| Environment variables                           | Cleared               | Only HOME, USER, PATH, TERM, COLORTERM, LANG and common API keys are passed in |
 
-### Optional hardening / customisation
+#### Security notes
 
-- **Stricter** (block network for pure offline work): remove --share-net
-- **Even tighter** (only project + minimal system): delete the optional ~/.gitconfig, ~/.ssh, ~/.nvm etc. lines.
-- **Add Landlock** (if you want extra FS enforcement on top): you can wrap further with a small Landlock helper, but for most people the mount namespace is already strong enough.
+- The network is shared, so anything Pi can read (project files, `~/.pi` tokens, passed-through API keys, `~/.config/gh`) could be exfiltrated if the agent is manipulated by prompt injection. Remove bind lines you don't need.
+- No seccomp filter or Landlock is applied by default.
 
-This is currently one of the lightest and most practical ways to run Pi safely on Linux.
+#### Optional hardening / customisation
 
+- **Offline** (pure local work): remove `--share-net`. Pi will not be able to reach LLM APIs or host `localhost` services.
+- **Tighter**: delete the optional `--ro-bind-try` lines (`.gitconfig`, `.config/gh`, `.npmrc`, `.nvm`, etc.) you don't need.
+- **Git over SSH**: uncomment the `~/.ssh` line (be aware of the exfiltration risk above).
+- **More syscall filtering**: generate a seccomp BPF file and pass it with `--seccomp FD`.
 
+#### Troubleshooting
 
+- `bwrap: No permissions to create new namespace` / `setting up uid map: Permission denied`: unprivileged user namespaces are blocked. On Ubuntu 23.10+, AppArmor restricts them by default; allow `bwrap` via an AppArmor profile or relax `kernel.apparmor_restrict_unprivileged_userns`.
+- `command not found` inside the sandbox: the tool lives in a directory that isn't bound in. Add a matching `--ro-bind-try` line.
