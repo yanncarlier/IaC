@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# pi-bwrap — lightweight bubblewrap sandbox for Pi coding agent
+# Usage: cd /path/to/project && pi-bwrap [pi arguments...]
+
+set -euo pipefail
+
+# Find the real pi binary (skip this script itself)
+SCRIPT_PATH=$(realpath "$0")
+REAL_PI=""
+
+# Prefer the first 'pi' that is not this script
+while IFS= read -r candidate; do
+  if [[ "$(realpath "$candidate")" != "$SCRIPT_PATH" ]]; then
+    REAL_PI="$candidate"
+    break
+  fi
+done < <(type -a -p pi 2>/dev/null || true)
+
+# Fallback if type -a is not available
+if [[ -z "$REAL_PI" ]]; then
+  REAL_PI=$(which pi 2>/dev/null || true)
+  if [[ -z "$REAL_PI" || "$(realpath "$REAL_PI")" == "$SCRIPT_PATH" ]]; then
+    echo "Error: real 'pi' binary not found in PATH" >&2
+    exit 1
+  fi
+fi
+
+PROJECT_DIR=$(pwd)
+HOME_DIR="$HOME"
+PI_HOME="${HOME_DIR}/.pi"
+
+exec bwrap \
+  --unshare-all \
+  --share-net \
+  --die-with-parent \
+  --new-session \
+  \
+  /* system (read-only) */ \
+  --ro-bind /usr /usr \
+  --ro-bind /bin /bin \
+  --ro-bind /sbin /sbin \
+  --ro-bind /lib /lib \
+  --ro-bind /lib64 /lib64 \
+  --ro-bind /etc/resolv.conf /etc/resolv.conf \
+  --ro-bind /etc/ssl /etc/ssl \
+  --ro-bind /etc/hosts /etc/hosts \
+  --ro-bind /etc/passwd /etc/passwd \
+  --ro-bind /etc/group /etc/group \
+  --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf \
+  \
+  /* runtime */ \
+  --dev /dev \
+  --proc /proc \
+  --tmpfs /tmp \
+  --tmpfs /var/tmp \
+  --tmpfs /run \
+  \
+  /* project (read-write) */ \
+  --bind "$PROJECT_DIR" "$PROJECT_DIR" \
+  --chdir "$PROJECT_DIR" \
+  \
+  /* Pi config & cache (writable) */ \
+  --bind "$PI_HOME" "$PI_HOME" \
+  \
+  /* optional useful read-only bits */ \
+  --ro-bind-try "$HOME_DIR/.gitconfig" "$HOME_DIR/.gitconfig" \
+  --ro-bind-try "$HOME_DIR/.config/gh" "$HOME_DIR/.config/gh" \
+  --ro-bind-try "$HOME_DIR/.ssh" "$HOME_DIR/.ssh" \
+  --ro-bind-try "$HOME_DIR/.npmrc" "$HOME_DIR/.npmrc" \
+  --ro-bind-try "$HOME_DIR/.nvm" "$HOME_DIR/.nvm" \
+  --ro-bind-try "$HOME_DIR/.local/share/fnm" "$HOME_DIR/.local/share/fnm" \
+  --ro-bind-try "$HOME_DIR/.cargo" "$HOME_DIR/.cargo" \
+  --ro-bind-try "$HOME_DIR/.rustup" "$HOME_DIR/.rustup" \
+  \
+  /* clean environment */ \
+  --clearenv \
+  --setenv HOME "$HOME_DIR" \
+  --setenv USER "$USER" \
+  --setenv PATH "/usr/local/bin:/usr/bin:/bin:$HOME_DIR/.local/bin" \
+  --setenv TERM "${TERM:-xterm-256color}" \
+  --setenv COLORTERM "${COLORTERM:-}" \
+  --setenv LANG "${LANG:-C.UTF-8}" \
+  \
+  /* pass through API keys if set outside */ \
+  ${ANTHROPIC_API_KEY:+--setenv ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"} \
+  ${OPENAI_API_KEY:+--setenv OPENAI_API_KEY "$OPENAI_API_KEY"} \
+  ${OPENROUTER_API_KEY:+--setenv OPENROUTER_API_KEY "$OPENROUTER_API_KEY"} \
+  ${XAI_API_KEY:+--setenv XAI_API_KEY "$XAI_API_KEY"} \
+  ${GOOGLE_API_KEY:+--setenv GOOGLE_API_KEY "$GOOGLE_API_KEY"} \
+  ${ZAI_API_KEY:+--setenv ZAI_API_KEY "$ZAI_API_KEY"} \
+  \
+  "$REAL_PI" "$@"

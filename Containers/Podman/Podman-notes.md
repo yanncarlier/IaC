@@ -38,3 +38,14 @@ podman system prune -a --volumes
 sudo rm -rf ./.local/share/containers/
 
 ```
+
+
+
+
+
+```
+podman run --rm -it --userns=keep-id --cap-drop=ALL --security-opt=no-new-privileges \
+  --read-only --tmpfs /tmp \
+  your-ai-image
+```
+
