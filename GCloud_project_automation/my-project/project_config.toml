@@ -1,5 +1,5 @@
 display_name = "Automated Project"
-quota_project_id = "bootstrap-admin-1776062853"
+quota_project_id = "bootstrap-admin-xxxxxxxxxxxx"
 
 # Option 1: let script generate project ID from prefix
 project_id_prefix = "automated-project"
