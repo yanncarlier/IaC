@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local cloud credentials and SDK
+.gcloud-config/
+.tools/
+
+# Local environment/secrets
+.env
+.env.*
+*.local
+*.secret
+
+# Local per-user config overrides
+my-config.toml
+
+# Generated API keys
+generated_keys/

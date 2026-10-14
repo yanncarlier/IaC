@@ -1,0 +1,9 @@
+display_name = "Automated Project"
+quota_project_id = "bootstrap-admin-1776062853"
+
+# Option 1: let script generate project ID from prefix
+project_id_prefix = "automated-project"
+append_timestamp = true
+
+# Option 2: set explicit project ID (uncomment and set value)
+# project_id = "automated-project-id"
