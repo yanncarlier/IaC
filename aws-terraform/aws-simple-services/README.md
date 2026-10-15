@@ -8,14 +8,14 @@ Terraform examples for learning how common AWS and Kubernetes-adjacent resources
 
 | Directory | Purpose | Notes |
 | --- | --- | --- |
-| [`simple-eks-cluster`](simple-eks-cluster/) | Creates a VPC and an EKS cluster with two managed node groups. | The most complete example. It creates chargeable resources, including a NAT gateway and EC2 worker nodes. |
-| [`simple-rds`](simple-rds/) | Aurora MySQL cluster, instances, VPC, subnet group, and security group. | Based on a HashiCorp learning example; see its [README](simple-rds/README.md). Requires security and credential changes before use. |
-| [`simple-ecr`](simple-ecr/) | Private ECR repository plus a sample IAM policy and role. | Uses a fixed AWS region and resource names. |
-| [`simple-jumpbox`](simple-jumpbox/) | EC2 jump-host and connection-output example. | AMI, key pair, and ingress settings are placeholders/insecure as written. |
-| [`simple-acl-sg`](simple-acl-sg/) | Network ACL and security-group rule snippets. | References VPC and subnet resources that are not defined in this directory. |
-| [`simple-docker-images`](simple-docker-images/) | Pulls a Docker image from a GitLab registry. | Requires Docker, provider setup, and GitLab credentials; avoid putting passwords in command lines. |
-| [`simple-ets-chart`](simple-ets-chart/) | Helm release example. | Uses intentionally fictitious chart and image values. |
-| [`simple-secrets`](simple-secrets/) | Examples of generated and Kubernetes secrets. | Files contain alternative examples with duplicate resource names; use one pattern in its own Terraform module, not all at once. |
+| [`eks-cluster`](eks-cluster/) | Creates a VPC and an EKS cluster with two managed node groups. | The most complete example. It creates chargeable resources, including a NAT gateway and EC2 worker nodes. |
+| [`rds`](rds/) | Aurora MySQL cluster, instances, VPC, subnet group, and security group. | Based on a HashiCorp learning example; see its [README](rds/README.md). Requires security and credential changes before use. |
+| [`ecr`](ecr/) | Private ECR repository plus a sample IAM policy and role. | Uses a fixed AWS region and resource names. |
+| [`jumpbox`](jumpbox/) | EC2 jump-host and connection-output example. | AMI, key pair, and ingress settings are placeholders/insecure as written. |
+| [`acl-sg`](acl-sg/) | Network ACL and security-group rule snippets. | References VPC and subnet resources that are not defined in this directory. |
+| [`docker-images`](docker-images/) | Pulls a Docker image from a GitLab registry. | Requires Docker, provider setup, and GitLab credentials; avoid putting passwords in command lines. |
+| [`ets-chart`](ets-chart/) | Helm release example. | Uses intentionally fictitious chart and image values. |
+| [`secrets`](secrets/) | Examples of generated and Kubernetes secrets. | Files contain alternative examples with duplicate resource names; use one pattern in its own Terraform module, not all at once. |
 
 ## Prerequisites
 
@@ -23,16 +23,16 @@ Terraform examples for learning how common AWS and Kubernetes-adjacent resources
 - AWS credentials supplied through a supported mechanism such as an AWS CLI profile, environment variables, or an assumed IAM role.
 - Permissions appropriate to the selected example. EKS and RDS need broad permissions for networking, IAM, and their respective AWS services.
 - Additional local tooling for particular snippets:
-  - Docker for `simple-docker-images`
+  - Docker for `docker-images`
   - Kubernetes access and the Kubernetes provider for Kubernetes-secret examples
-  - Helm provider configuration for `simple-ets-chart`
+  - Helm provider configuration for `ets-chart`
 
 ## Quick start
 
 Choose one directory, inspect its code, and make configuration changes before planning. For example, to work with the EKS configuration:
 
 ```bash
-cd simple-eks-cluster
+cd eks-cluster
 terraform init
 terraform fmt -check
 terraform validate
@@ -55,7 +55,7 @@ Do not copy a plan, state file, or `.terraform` directory between examples. Use 
 
 ## EKS configuration
 
-`simple-eks-cluster` uses the community VPC and EKS modules. Its primary inputs are defined in [`variables.tf`](simple-eks-cluster/variables.tf):
+`eks-cluster` uses the community VPC and EKS modules. Its primary inputs are defined in [`variables.tf`](eks-cluster/variables.tf):
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -108,4 +108,4 @@ Terraform state can contain infrastructure metadata and secrets. Keep it out of 
 
 ## License and attribution
 
-The `simple-rds` directory includes its own MPL-2.0 license and states that it is a companion to HashiCorp's RDS learning tutorial. Other examples include comments and links referencing community sources. No repository-wide license is currently supplied; confirm licensing before redistributing code outside the scope of the included `simple-rds` license.
+The `rds` directory includes its own MPL-2.0 license and states that it is a companion to HashiCorp's RDS learning tutorial. Other examples include comments and links referencing community sources. No repository-wide license is currently supplied; confirm licensing before redistributing code outside the scope of the included `rds` license.

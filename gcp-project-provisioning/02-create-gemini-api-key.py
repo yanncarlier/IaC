@@ -120,8 +120,8 @@ def main():
     )
     parser.add_argument(
         "--config",
-        default="project_config.toml",
-        help="Optional TOML config to read quota_project_id from (default: project_config.toml)",
+        default="project-config.toml",
+        help="Optional TOML config to read quota_project_id from (default: project-config.toml)",
     )
     parser.add_argument(
         "--output-dir",

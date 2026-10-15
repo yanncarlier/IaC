@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# nuke-containers.sh: completely remove Docker and Podman (Ubuntu), with a volume backup first.
+# uninstall-docker-and-podman.sh: completely remove Docker and Podman (Ubuntu), with a volume backup first.
 #
 # Usage:
-#   chmod +x nuke-containers.sh
-#   ./nuke-containers.sh          # run as your normal user; it calls sudo where needed
+#   chmod +x uninstall-docker-and-podman.sh
+#   ./uninstall-docker-and-podman.sh          # run as your normal user; it calls sudo where needed
 #
 # Not using "set -e" on purpose: many cleanup steps legitimately fail if
 # something was never installed, and the script should keep going.

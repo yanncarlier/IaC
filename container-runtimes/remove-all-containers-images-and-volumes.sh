@@ -1,5 +1,5 @@
 #!/bin/bash
-# delete_all_containers.sh
+# remove-all-containers-images-and-volumes.sh
 # Summary: Stop and remove all Docker containers, images, and volumes on the host.
 # WARNING: Destructive operation. This will remove containers, images and volumes.
 

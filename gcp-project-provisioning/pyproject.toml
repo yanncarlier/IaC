@@ -1,7 +1,7 @@
 [project]
-name = "my-project"
+name = "gcp-project-provisioning"
 version = "0.1.0"
-description = "Add your description here"
+description = "Create Google Cloud projects and Gemini API keys via the Cloud Resource Manager API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

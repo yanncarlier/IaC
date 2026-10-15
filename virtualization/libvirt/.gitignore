@@ -1,0 +1,19 @@
+# Secrets and keys
+*.pem
+*.key
+*.pfx
+*.p12
+.env
+.env.*
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python bytecode
+__pycache__/
+*.py[cod]

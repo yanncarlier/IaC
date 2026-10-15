@@ -324,7 +324,7 @@ wheels = [
 ]
 
 [[package]]
-name = "my-project"
+name = "gcp-project-provisioning"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

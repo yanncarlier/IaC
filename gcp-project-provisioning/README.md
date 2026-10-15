@@ -9,7 +9,7 @@ Simple Python automation to create Google Cloud projects using the Cloud Resourc
 - explicit `project_id`
 - or generated project IDs from a `project_id_prefix` (+ optional timestamp)
 
-Main script: `01-create_gcloud_project.py`
+Main script: `01-create-gcloud-project.py`
 
 ## Prerequisites
 
@@ -55,7 +55,7 @@ GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentia
 
 ## Configure Project Creation
 
-Edit `project_config.toml`:
+Edit `project-config.toml`:
 
 ```toml
 display_name = "Automated Project"
@@ -87,13 +87,13 @@ Why:
 Default config:
 
 ```bash
-GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json uv run 01-create_gcloud_project.py
+GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json uv run 01-create-gcloud-project.py
 ```
 
 Custom config path:
 
 ```bash
-GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json uv run 01-create_gcloud_project.py --config my-config.toml
+GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentials.json uv run 01-create-gcloud-project.py --config my-config.toml
 ```
 
 ## Typical Errors
@@ -108,7 +108,7 @@ GOOGLE_APPLICATION_CREDENTIALS=$PWD/.gcloud-config/application_default_credentia
 `02-create-gemini-api-key.py` automates Gemini key creation for a target project.
 
 What it does:
-- Uses ADC and optional `quota_project_id` from `project_config.toml`
+- Uses ADC and optional `quota_project_id` from `project-config.toml`
 - Ensures required services are enabled on the target project:
 - `apikeys.googleapis.com`
 - `generativelanguage.googleapis.com`
@@ -167,5 +167,5 @@ Do not commit credential files.
 
 ## Repo Scripts
 
-- `01-create_gcloud_project.py`: create a GCP project from TOML config
+- `01-create-gcloud-project.py`: create a GCP project from TOML config
 - `02-create-gemini-api-key.py`: enable required APIs and create a Gemini API key

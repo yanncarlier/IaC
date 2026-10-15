@@ -1,0 +1,19 @@
+# Secrets, keys and certificates
+*.pfx
+*.pem
+*.key
+*.p12
+.env
+.env.*
+
+# Local notes and scratch output
+notes.md
+*notes.md
+*openclaw.json
+
+# Build artifacts and archives
+*.tar.gz
+
+# Python bytecode (some helper scripts are .py)
+__pycache__/
+*.py[cod]

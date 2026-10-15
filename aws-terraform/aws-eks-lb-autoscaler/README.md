@@ -26,7 +26,7 @@ kubectl apply -f k8s/arn-service-4rancher.yaml
 
 
 
-![Edit_record_Rancher](./assets/Edit_record_Rancher.png)
+![Rancher edit record](./assets/rancher-edit-record.png)
 
 https://rancher.your_domain_name.com/dashboard/
 
@@ -34,12 +34,12 @@ https://rancher.your_domain_name.com/dashboard/
 
 # Architecture Diagram
 
-![Diagram](./assets/architecture_diagram.png)
+![Diagram](./assets/architecture-diagram.png)
 
 You can find tutorial [here](https://antonputra.com/amazon/create-eks-cluster-using-terraform-modules/).
 
-![Ingress](./assets/Ingress.jpeg)
+![Ingress](./assets/ingress.jpeg)
 
-![LB](./assets/LB.jpeg)
+![LB](./assets/load-balancer.jpeg)
 
-![NodePort](./assets/NodePort.jpeg)
+![NodePort](./assets/nodeport.jpeg)

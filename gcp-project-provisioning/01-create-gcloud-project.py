@@ -54,7 +54,7 @@ def build_project_id(config: dict) -> str:
 def load_config(config_path: Path) -> dict:
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Config file not found: {config_path}. Create it from project_config.toml."
+            f"Config file not found: {config_path}. Create it from project-config.toml."
         )
 
     with config_path.open("rb") as f:
@@ -107,8 +107,8 @@ def main():
     parser = argparse.ArgumentParser(description="Create a Google Cloud project.")
     parser.add_argument(
         "--config",
-        default="project_config.toml",
-        help="Path to TOML config file (default: project_config.toml)",
+        default="project-config.toml",
+        help="Path to TOML config file (default: project-config.toml)",
     )
     args = parser.parse_args()
 
