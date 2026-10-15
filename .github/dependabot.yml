@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # The only Python project in this repo.
+  - package-ecosystem: "pip"
+    directory: "/gcp-project-provisioning"
+    schedule:
+      interval: "weekly"
+    groups:
+      grouped-security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+
+  # Keep the Actions used by .github/workflows up to date.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      grouped-security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+
+open-pull-requests-limit: 5
