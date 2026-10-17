@@ -32,6 +32,18 @@ opencode-bwrap run "fix the tests"  # any arguments are passed to opencode
 
 Always run it from the project directory. Whatever directory you are in becomes the writable project.
 
+> **The sandbox is opt-in by name.** It applies *only* when you launch
+> `opencode-bwrap`. Running plain `opencode` — from an IDE, a launcher, or
+> another terminal — is **not** sandboxed.
+>
+> The wrapper sets `$OPENCODE_BWRAP=1` inside the sandbox, but **do not treat
+> that as proof.** Tool execution can happen in a process that inherited the
+> variable from outside its own namespaces. See "Verifying the sandbox" below
+> for a check that cannot produce a false positive.
+
+The wrapper refuses to start (rather than silently degrading) if `HOME` is
+unset, if `bwrap` is missing, or if unprivileged namespaces are blocked.
+
 ## What the sandbox does
 
 | Access                                                       | Status                | Reason                                      |
@@ -67,6 +79,64 @@ If your provider uses a different variable, add its name to the `for var in ...`
 - **`.git` is writable.** The whole project directory is read-write, including `.git/hooks`. Hooks run outside the sandbox when you later run git yourself, so review them if you let the agent work unattended.
 - **Shared kernel.** Namespaces are not a VM boundary. A kernel exploit could escape. For hostile or untrusted code, use a microVM instead.
 - **No seccomp or Landlock.** This wrapper uses namespaces, dropped capabilities and `NO_NEW_PRIVS` only. Bubblewrap can load a seccomp filter with `--seccomp FD` if you want to add one.
+- **OpenCode delegates tools to a host daemon.** Without `--standalone` this is fatal to the sandbox; the wrapper sets it for you. Verify with "Verifying the sandbox" above if you ever launch OpenCode another way.
+
+## Verifying the sandbox
+
+`$OPENCODE_BWRAP` can be set in a process that is *not* sandboxed, so check the namespaces instead. From inside a shell tool:
+
+```bash
+# Host PID 1 is systemd/init. Inside the sandbox, PID 1 is bwrap.
+tr '\0' ' ' < /proc/1/cmdline
+
+# A sandboxed process has bwrap's user-namespace mapping.
+cat /proc/self/uid_map
+
+# The two decisive checks: your Desktop and .ssh must be invisible.
+ls -d ~/Desktop 2>&1
+ls -d ~/.ssh   2>&1
+```
+
+If `/proc/1/cmdline` shows `systemd` or `init`, you are **not** in a sandbox.
+
+## Why `--standalone` is required
+
+OpenCode v2 splits into a client and a shared background daemon. By default the
+client attaches to `opencode serve --service`, and **tool calls are executed by
+that daemon** — which lives in the host namespaces, where `bwrap` cannot see or
+contain it. Confining only the client leaves the agent with full access to
+`~/Desktop`, `~/.ssh` and the rest of `$HOME`.
+
+The wrapper therefore passes `--standalone`, which makes the client run a
+private server of its own. That server is a child process and inherits the
+namespaces set up here, so its tool calls stay confined:
+
+| Process                              | Namespaces | Role                        |
+| ------------------------------------ | ---------- | --------------------------- |
+| `opencode --standalone`              | sandboxed  | The client for your session |
+| `opencode serve --stdio --port 0`    | sandboxed  | Runs the tool calls         |
+
+Without `--standalone` the second row becomes `opencode serve --service` in the
+**host** namespaces, and the sandbox is effectively bypassed.
+
+This uses OpenCode's own CLI flag, so it keeps working across upgrades and
+reinstalls — no patch to the application is involved. Note that `--standalone`
+is only accepted by the agent entry points (`opencode`, `opencode run`,
+`opencode mini`); `session` and `debug` reject it, so the wrapper injects it
+only where it is valid.
+
+Because each sandboxed session gets its own server, you lose the shared
+background server's cross-session continuity. Sessions still persist, but
+`opencode service status` will not list them.
+
+To confirm which process ran your tool, and in which namespaces:
+
+```bash
+ps -o pid=,ppid=,args= -C opencode
+for p in $(pgrep -x opencode); do
+  echo "$p $(readlink /proc/$p/ns/mnt) $(tr '\0' ' ' < /proc/$p/cmdline)"
+done
+```
 
 ## Customisation
 
@@ -84,6 +154,8 @@ If your provider uses a different variable, add its name to the `for var in ...`
 | `Error: real 'opencode' binary not found in PATH`            | OpenCode isn't installed, or isn't in `PATH`. Install it, or check `~/.opencode/bin/opencode` exists. |
 | `command not found` for a tool inside the sandbox            | The tool lives in a directory that isn't bound in. Add a matching `--ro-bind-try` line and, if needed, extend `SANDBOX_PATH`. |
 | OpenCode can't save sessions or login                        | Its data directory differs from the defaults. Adjust the `OC_*` variables in the script. |
+| `$OPENCODE_BWRAP` is unset                                   | You launched plain `opencode`. Only `opencode-bwrap` is sandboxed.                            |
+| Tool runs outside the sandbox despite a sandboxed session     | Check that `--standalone` is being passed; without it OpenCode delegates tool calls to a host-side `opencode serve --service` daemon.        |
 | Git push over SSH fails                                      | `~/.ssh` is hidden by default. Uncomment the `.ssh` line if you accept the risk. |
 | Syntax errors after editing the script                       | Bash does not allow comments after a trailing `\`. Keep comments on their own lines inside the `args=( ... )` array. |
 

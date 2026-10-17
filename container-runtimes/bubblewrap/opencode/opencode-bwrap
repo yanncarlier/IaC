@@ -4,6 +4,36 @@
 
 set -euo pipefail
 
+# --- Fail closed: refuse to start unless the sandbox will really engage -------
+# bwrap exits non-zero if it cannot build the namespaces, so opencode would
+# never launch in that case. These checks exist to turn a cryptic bubblewrap
+# error into an actionable message, and to catch the cases where a partial
+# setup would quietly produce a wider-than-intended environment.
+
+if [[ -z "${HOME:-}" ]]; then
+  echo "Error: HOME is not set. Cannot build the sandbox paths." >&2
+  exit 1
+fi
+
+if ! command -v bwrap >/dev/null 2>&1; then
+  echo "Error: bubblewrap (bwrap) not found in PATH." >&2
+  echo "       Install it (e.g. 'sudo apt install bubblewrap') and retry." >&2
+  exit 1
+fi
+
+# Probe that unprivileged namespaces actually work before exec'ing bwrap.
+# This is the check that fails under Ubuntu 23.10+ AppArmor restrictions.
+if ! bwrap --unshare-all --share-net --ro-bind / / --dev /dev /bin/true 2>/dev/null; then
+  echo "Error: bubblewrap could not create the sandbox namespaces." >&2
+  echo "       Unprivileged user namespaces are most likely blocked." >&2
+  echo "       Fixes:" >&2
+  echo "         - Ubuntu 23.10+: allow bwrap via AppArmor, or relax" >&2
+  echo "           kernel.apparmor_restrict_unprivileged_userns" >&2
+  echo "         - Containers: run with --privileged, or allow user namespaces" >&2
+  echo "       Test with: bwrap --unshare-all --ro-bind / / /bin/true" >&2
+  exit 1
+fi
+
 # --- Locate the real opencode binary (skip this wrapper itself) --------------
 SCRIPT_PATH=$(realpath "$0")
 REAL_BIN=""
@@ -37,7 +67,8 @@ OC_DATA="${HOME_DIR}/.local/share/opencode"
 OC_STATE="${HOME_DIR}/.local/state/opencode"
 OC_CACHE="${HOME_DIR}/.cache/opencode"
 
-# bwrap's --bind fails if the source doesn't exist
+# bwrap's --bind fails if the source doesn't exist.
+# NOTE: this runs on the host, before bwrap, so it touches your real $HOME.
 mkdir -p "$OC_CONFIG" "$OC_DATA" "$OC_STATE" "$OC_CACHE"
 
 SANDBOX_PATH="/usr/local/bin:/usr/bin:/bin:${HOME_DIR}/.local/bin:${HOME_DIR}/.opencode/bin:${REAL_BIN_DIR}:${REAL_BIN_RESOLVED_DIR}"
@@ -106,6 +137,10 @@ args=(
   --setenv TERM "${TERM:-xterm-256color}"
   --setenv COLORTERM "${COLORTERM:-}"
   --setenv LANG "${LANG:-C.UTF-8}"
+
+  # Marker so the agent (and you) can tell at a glance that this session is
+  # sandboxed. If OPENCODE_BWRAP is unset, you are running plain opencode.
+  --setenv OPENCODE_BWRAP "1"
 )
 
 # Pass through API keys only if they are set outside the sandbox
@@ -123,4 +158,32 @@ while IFS= read -r var; do
   args+=(--setenv "$var" "${!var}")
 done < <(compgen -v OPENCODE_ || true)
 
-exec bwrap "${args[@]}" "$REAL_BIN" "$@"
+# --- Force a private, sandboxed server -----------------------------------------
+# By default OpenCode v2 attaches to a long-lived host-side
+# `opencode serve --service` daemon and executes tool calls *there* -- outside
+# these namespaces, so nothing this wrapper does would contain them.
+# --standalone makes the client run its own server instead. That server is a
+# child process, so it inherits the mount/PID namespaces set up above and its
+# tool calls stay confined.
+#
+# Only the agent entry points accept the flag; `session` and `debug` reject it,
+# so inject it just for the former and pass everything else through untouched.
+oc_args=()
+if [[ " $* " != *" --standalone "* ]]; then
+  case "${1:-}" in
+    run|mini)
+      oc_args=("$1" --standalone "${@:2}")
+      ;;
+    ""|-*)
+      oc_args=(--standalone "$@")
+      ;;
+    *)
+      # Administrative subcommand; leave it alone.
+      oc_args=("$@")
+      ;;
+  esac
+else
+  oc_args=("$@")
+fi
+
+exec bwrap "${args[@]}" "$REAL_BIN" ${oc_args[@]+"${oc_args[@]}"}
